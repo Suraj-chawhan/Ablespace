@@ -6,68 +6,69 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Asset from 'expo-asset';
 import { View, Image, StyleSheet } from 'react-native';
 
-// Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { isDark, initTheme } = useThemeStore();
-  const [isReady, setIsReady] = useState(false);
+  const { isDark, initTheme } = useThemeStore();
+  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    const prepare = async () => {
-      try {
-        initTheme();
+  useEffect(() => {
+    const prepare = async () => {
+      try {
+        initTheme();
 
-        // Load splash asset
-        await Asset.loadAsync([require('../assets/logo-drgitr.jpg')]);
+        // preload logo
+        await Asset.loadAsync([require('../assets/tts.png')]);
 
-        // Wait 2 seconds (splash duration)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setIsReady(true);
-        await SplashScreen.hideAsync();
-      }
-    };
+        // delay for splash
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setIsReady(true);
+        await SplashScreen.hideAsync();
+      }
+    };
 
-    prepare();
-  }, []);
+    prepare();
+  }, []);
 
-  if (!isReady) {
-    return (
-      <View style={styles.splashContainer}>
-        <Image
-          source={require('../assets/logo-drgitr.jpg')}
-          style={styles.splashImage}
-          resizeMode="contain"
-        />
-      </View>
-    );
-  }
+  if (!isReady) {
+    return (
+      <View style={styles.splashContainer}>
+        <Image
+          source={require('../assets/tts.png')}
+          style={styles.splashImage}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  }
 
-  return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-           <Stack.Screen name="Signup" />
-               <Stack.Screen name="Signin" />
-        <Stack.Screen name="OnboardingScreen" />
-        <Stack.Screen name="(drawer)" />
-      </Stack>
-    </ThemeProvider>
-  );
+  return (
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+  
+        <Stack.Screen name="index" options={{ href: "/" }} />
+
+        {/* other routes */}
+        <Stack.Screen name="Signin" />
+        <Stack.Screen name="OnboardingScreen" />
+        <Stack.Screen name="(drawer)" />
+      </Stack>
+    </ThemeProvider>
+  );
 }
 
 const styles = StyleSheet.create({
-  splashContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff', // Light background; adjust for dark mode if needed
-  },
-  splashImage: {
-    width: 180,
-    height: 180,
-  },
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  splashImage: {
+    width: 180,
+    height: 180,
+  },
 });

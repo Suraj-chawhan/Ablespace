@@ -52,7 +52,7 @@ export default function DrawerContent(props) {
     }
   };
 
-  // Logout function: clears token & user data and redirects to Signin screen
+  
   const handleLogout = async () => {
     try {
       await SecureStore.deleteItemAsync('userToken');
@@ -74,7 +74,7 @@ export default function DrawerContent(props) {
       {/* App Header */}
       <View style={styles.header}>
         <Image
-          source={require('../assets/logo-drgitr.jpg')}
+          source={require('../assets/tts.png')}
           style={styles.avatar}
           resizeMode="contain"
         />
@@ -91,35 +91,7 @@ export default function DrawerContent(props) {
       {/* Drawer Items */}
       <DrawerItemList {...props} />
 
-      <DrawerItem
-        label="Privacy Policy"
-        icon={({ color, size }) => (
-          <MaterialIcons name="policy" size={size} color={color} />
-        )}
-        onPress={() =>
-          openLink(
-            `${process.env.EXPO_PUBLIC_API_URL}/privacy-policy`
-          )
-        }
-      />
 
-      <DrawerItem
-        label="Report a Bug"
-        icon={({ color, size }) => (
-          <Ionicons name="bug-outline" size={size} color={color} />
-        )}
-        onPress={() =>
-          openLink(`${process.env.EXPO_PUBLIC_API_URL}/report-form`)
-        }
-      />
-
-      <DrawerItem
-        label="Share App"
-        icon={({ color, size }) => (
-          <Ionicons name="share-social-outline" size={size} color={color} />
-        )}
-        onPress={handleShare}
-      />
 
       {/* Theme Toggle */}
       <View style={styles.themeToggle}>

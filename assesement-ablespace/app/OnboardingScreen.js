@@ -18,43 +18,19 @@ const { width } = Dimensions.get('window');
 const data = [
   {
     id: '0',
-    title: 'Welcome to DRGITR Complaint App',
+    title: 'Text to Speech',
     description:
-      'Use this app to easily send complaints directly to the right department in your college.',
-    image: require('../assets/logo-drgitr.jpg'), // College logo
+      'Easily convert written text into natural-sounding speech. Ideal for accessibility, learning, and productivity.',
+    image: require('../assets/tts.png'), // ✅ your TTS image
     colors: ['#283c86', '#45a247'], // Blue-green gradient
   },
   {
     id: '1',
-    title: 'Cleaner Service',
+    title: 'Image Captioning',
     description:
-      'Report cleanliness issues around campus and get them resolved quickly.',
-    image: require('../assets/cleaner.png'),
-    colors: ['#1c92d2', '#f2fcfe'],
-  },
-  {
-    id: '2',
-    title: 'Electrician Service',
-    description:
-      'Report electrical issues such as broken lights or wiring problems.',
-    image: require('../assets/electrician.png'),
-    colors: ['#ff9966', '#ff5e62'],
-  },
-  {
-    id: '3',
-    title: 'Canteen Complaints',
-    description:
-      'Share feedback or complaints about the canteen food and hygiene.',
-    image: require('../assets/canteen.png'),
-    colors: ['#56ab2f', '#a8e063'],
-  },
-  {
-    id: '4',
-    title: 'Water Cooler Maintenance',
-    description:
-      'Report problems with water coolers so they can be fixed promptly.',
-    image: require('../assets/watercoller.png'),
-    colors: ['#36d1dc', '#5b86e5'],
+      'Upload or capture an image and automatically generate meaningful captions describing the content.',
+    image: require('../assets/imgcaption.jpeg'), // ✅ your Image Captioning image
+    colors: ['#36d1dc', '#5b86e5'], // Blue gradient
   },
 ];
 

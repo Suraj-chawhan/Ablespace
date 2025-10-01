@@ -79,7 +79,7 @@ export default function Signup() {
       await saveUserData(data.token, data.user);
 
       Alert.alert('Success', `Welcome, ${data.user.name}!`);
-      router.replace('/');
+      router.replace('/(drawer)/Main');
     } catch (error) {
       const message =
         error.response?.data?.message || error.message || 'Unknown error occurred.';
@@ -99,7 +99,7 @@ export default function Signup() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Logo Image */}
-        <Image source={require('../assets/logo-drgitr.jpg')} style={styles.logo} />
+        <Image source={require('../assets/tts.png')} style={styles.logo} />
 
         <Text style={styles.title}>Create Account</Text>
 

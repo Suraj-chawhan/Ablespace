@@ -31,21 +31,10 @@ export default function DrawerLayout() {
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={({ route }) => ({
         headerShown: true,
-        title: route?.params?.name || 'Content',
-        drawerLabel: route?.params?.name || 'Content',
+        title: route?.params?.name || 'TTS caption image',
+        drawerLabel: route?.params?.name || 'TTS caption image',
 
-        headerRight: () => (
-          <TouchableOpacity
-            style={styles.headerRightContainer}
-            onPress={() => router.replace('/')}
-          >
-            {userName ? (
-              <Text style={styles.userNameText}>{userName}</Text>
-            ) : null}
-            
-            <Ionicons name="arrow-forward" size={24} color="white" />
-          </TouchableOpacity>
-        ),
+        
 
         headerStyle: {
           backgroundColor: isDark ? '#1e1e1e' : '#777',

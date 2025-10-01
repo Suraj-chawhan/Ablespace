@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   Image,
   FlatList,
   TextInput,
   ActivityIndicator,
   Alert,
   Dimensions,
+  Share,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
@@ -19,10 +20,9 @@ import { useThemeStore } from '../../components/ZustandStore';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 40) / 2;
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function ComplaintScreen() {
-  const { isDark } = useThemeStore();
-
   const [items, setItems] = useState([]);
   const [formVisible, setFormVisible] = useState(false);
   const [image, setImage] = useState(null);
@@ -31,34 +31,36 @@ export default function ComplaintScreen() {
   const [caption, setCaption] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const { isDark } = useThemeStore(); // ✅ Zustand theme
+
   useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const data = await AsyncStorage.getItem('complaintItems');
+        if (data) setItems(JSON.parse(data));
+      } catch (err) {
+        console.error('Failed to load items:', err);
+      }
+    };
     loadItems();
   }, []);
 
-  const loadItems = async () => {
-    try {
-      const data = await AsyncStorage.getItem('complaintItems');
-      if (data) setItems(JSON.parse(data));
-    } catch (err) {
-      console.error('Failed to load items:', err);
-    }
-  };
-
   const saveItem = async (newItem) => {
-    try {
-      const updatedItems = [newItem, ...items];
-      setItems(updatedItems);
-      await AsyncStorage.setItem('complaintItems', JSON.stringify(updatedItems));
-      setImage(null);
-      setAudioUri(null);
-      setCaption('');
-      setFormVisible(false);
-    } catch (err) {
-      console.error(err);
-    }
+    const updatedItems = [newItem, ...items];
+    setItems(updatedItems);
+    await AsyncStorage.setItem('complaintItems', JSON.stringify(updatedItems));
+    setImage(null);
+    setAudioUri(null);
+    setCaption('');
+    setFormVisible(false);
   };
 
-  // Pick image
+  const deleteItem = async (index) => {
+    const updatedItems = items.filter((_, i) => i !== index);
+    setItems(updatedItems);
+    await AsyncStorage.setItem('complaintItems', JSON.stringify(updatedItems));
+  };
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -69,54 +71,57 @@ export default function ComplaintScreen() {
     if (!result.canceled) setImage(result.assets[0].uri);
   };
 
-  // Audio Recording
   const startRecording = async () => {
     try {
-      setLoading(true);
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission required', 'Audio recording access is needed.');
-        setLoading(false);
         return;
       }
       const rec = new Audio.Recording();
       await rec.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
       await rec.startAsync();
       setRecording(rec);
-      setLoading(false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
     }
   };
 
   const stopRecording = async () => {
     try {
-      setLoading(true);
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(null);
       setAudioUri(uri);
 
-      // Send audio to backend API for transcription
-      const formData = new FormData();
-      formData.append('audio', { uri, name: 'audio.m4a', type: 'audio/m4a' });
+      if (uri) {
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('audio', {
+          uri,
+          type: 'audio/mp4',
+          name: 'audio.m4a',
+        });
 
-      const res = await fetch('https://YOUR_BACKEND_URL/upload', {
-        method: 'POST',
-        body: formData,
-      });
+        try {
+          const res = await fetch(`${API_URL}/upload`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
 
-      if (!res.ok) {
-        throw new Error(await res.text());
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          setCaption(data.transcription || '');
+        } catch (err) {
+          console.error('Transcription failed:', err);
+          Alert.alert('Error', 'Audio transcription failed.');
+        } finally {
+          setLoading(false);
+        }
       }
-      const data = await res.json();
-      setCaption(data.transcription || '');
-      setLoading(false);
     } catch (err) {
-      console.error('Transcription failed:', err);
-      Alert.alert('Error', 'Audio transcription failed. Make sure your internet is working.');
-      setLoading(false);
+      console.error(err);
     }
   };
 
@@ -128,37 +133,43 @@ export default function ComplaintScreen() {
     saveItem({ image, audioUri, caption });
   };
 
-  const renderItem = ({ item }) => (
-    <View style={[styles.gridItem, { backgroundColor: isDark ? '#333' : '#fff' }]}>
-      {item.image && <Image source={{ uri: item.image }} style={styles.image} />}
-      {item.audioUri && (
-        <TouchableOpacity
-          style={styles.audioButton}
-          onPress={async () => {
-            try {
-              const sound = new Audio.Sound();
-              await sound.loadAsync({ uri: item.audioUri });
-              await sound.playAsync();
-            } catch (err) {
-              console.error(err);
-            }
-          }}
-        >
-          <Ionicons name="play" size={20} color="#fff" />
-          <Text style={styles.audioButtonText}>Play</Text>
+  const renderItem = ({ item, index }) => {
+    const onShare = async () => {
+      try {
+        let content = item.caption || '';
+        if (item.image) content += `\n📷 Image: ${item.image}`;
+        if (item.audioUri) content += `\n🎤 Audio: ${item.audioUri}`;
+        await Share.share({ message: content });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    };
+
+    return (
+      <View style={[styles.gridItem, { backgroundColor: isDark ? '#222' : '#fff' }]}>
+        {/* Delete Button */}
+        <TouchableOpacity style={styles.deleteButton} onPress={() => deleteItem(index)}>
+          <Ionicons name="trash" size={22} color="red" />
         </TouchableOpacity>
-      )}
-      {item.caption && (
-        <Text style={[styles.caption, { color: isDark ? '#fff' : '#111' }]}>{item.caption}</Text>
-      )}
-    </View>
-  );
+
+        {/* Share Button */}
+        <TouchableOpacity style={styles.shareButton} onPress={onShare}>
+          <Ionicons name="share-social" size={22} color="#005af0" />
+        </TouchableOpacity>
+
+        {item.image && <Image source={{ uri: item.image }} style={styles.image} />}
+        {item.caption && (
+          <Text style={[styles.caption, { color: isDark ? '#eee' : '#111' }]}>{item.caption}</Text>
+        )}
+      </View>
+    );
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f2f2f2' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#f2f2f2' }]}>
       {formVisible && (
-        <View style={[styles.formContainer, { backgroundColor: isDark ? '#222' : '#fff' }]}>
-          <View style={styles.inlineRow}>
+        <View style={[styles.formContainer, { backgroundColor: isDark ? '#111' : '#fff' }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <TouchableOpacity
               style={styles.button}
               onPress={recording ? stopRecording : startRecording}
@@ -174,11 +185,14 @@ export default function ComplaintScreen() {
           </View>
 
           <TextInput
-            style={[styles.input, { backgroundColor: isDark ? '#333' : '#eee', color: isDark ? '#fff' : '#000' }]}
+            style={[
+              styles.input,
+              { backgroundColor: isDark ? '#333' : '#eee', color: isDark ? '#fff' : '#000' },
+            ]}
             value={caption}
             onChangeText={setCaption}
             placeholder="Caption..."
-            placeholderTextColor={isDark ? '#aaa' : '#555'}
+            placeholderTextColor={isDark ? '#888' : '#666'}
           />
 
           <TouchableOpacity style={styles.addButtonForm} onPress={addItem}>
@@ -199,10 +213,7 @@ export default function ComplaintScreen() {
       />
 
       {!formVisible && (
-        <TouchableOpacity
-          style={styles.floatingAdd}
-          onPress={() => setFormVisible(true)}
-        >
+        <TouchableOpacity style={styles.floatingAdd} onPress={() => setFormVisible(true)}>
           <Ionicons name="add-circle" size={56} color="#005af0" />
         </TouchableOpacity>
       )}
@@ -213,7 +224,6 @@ export default function ComplaintScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   formContainer: { padding: 10, margin: 10, borderRadius: 12, elevation: 3 },
-  inlineRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   button: {
     flex: 1,
     marginHorizontal: 5,
@@ -221,9 +231,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#005af0',
     borderRadius: 12,
     alignItems: 'center',
+    marginVertical: 5,
   },
   buttonText: { color: '#fff', marginTop: 4, textAlign: 'center', fontWeight: '600' },
-  input: { borderRadius: 12, padding: 10, fontSize: 16, marginBottom: 10 },
+  input: { borderRadius: 12, padding: 10, fontSize: 16, marginVertical: 10 },
   addButtonForm: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -231,7 +242,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     justifyContent: 'center',
-    marginBottom: 10,
+    marginVertical: 5,
   },
   gridItem: {
     flex: 1,
@@ -240,17 +251,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     padding: 8,
+    position: 'relative',
   },
   image: { width: ITEM_SIZE, height: ITEM_SIZE, borderRadius: 12 },
   caption: { padding: 6, textAlign: 'center' },
-  audioButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#005af0',
-    padding: 6,
-    borderRadius: 8,
-    marginTop: 6,
+  deleteButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 4,
+    elevation: 3,
+    zIndex: 1,
   },
-  audioButtonText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
+  shareButton: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 4,
+    elevation: 3,
+    zIndex: 1,
+  },
   floatingAdd: { position: 'absolute', bottom: 25, right: 25, alignItems: 'center' },
 });

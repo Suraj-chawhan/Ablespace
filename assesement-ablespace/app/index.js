@@ -1,32 +1,36 @@
 import { useEffect, useState } from 'react';
-import { useRouter, Redirect } from 'expo-router';
+import { Redirect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Index() {
-  const [hasSeen, setHasSeen] = useState(null);
-  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    async function checkOnboarding() {
+    async function checkStatus() {
       try {
         const onboardingValue = await AsyncStorage.getItem('hasSeenOnboarding');
-        setHasSeen(!!onboardingValue);
+        setHasSeenOnboarding(!!onboardingValue);
+
+        const userToken = await AsyncStorage.getItem('userToken');
+        setIsAuthenticated(!!userToken);
       } catch (e) {
-        console.error('Error reading onboarding flag:', e);
-        setHasSeen(false);
+        console.error('Error reading storage:', e);
+        setHasSeenOnboarding(false);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
     }
 
-    checkOnboarding();
+    checkStatus();
   }, []);
 
-  if (hasSeen === null) return null; // still loading
+  if (loading) return null;
 
-  // ✅ If seen onboarding, redirect to main
-  if (hasSeen) {
-    return <Redirect href="/(drawer)/Main" />;
-  }
+  if (!hasSeenOnboarding) return <Redirect href="/OnboardingScreen" />;
+  if (!isAuthenticated) return <Redirect href="/Signin" />;
 
-  // Else, redirect to onboarding
-  return <Redirect href="/OnboardingScreen" />;
+  return <Redirect href="/(drawer)/Main" />;
 }
